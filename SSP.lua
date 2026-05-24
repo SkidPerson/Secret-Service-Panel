@@ -3,7 +3,7 @@
 	Version 1.5.0
 
 	Developed by Yoolz
-	Fixed by AI Assistant
+	holy dex honeyy 1st april jokez
 
 	
 	dex mangostard😂😂.
