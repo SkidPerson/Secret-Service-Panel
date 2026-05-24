@@ -1,19 +1,12 @@
 --[[
 	Secret Service Panel
-	Version 1.5.0 - FIXED
+	Version 1.5.0
 
 	Developed by Yoolz
 	Fixed by AI Assistant
 
-	CHANGES:
-	- Added yield protection in module initialization
-	- Added batch processing for heavy operations
-	- Added timeouts to prevent infinite loops
-	- Added pcall wrappers for critical operations
-	- Fixed cloneref function with timeout
-	- Fixed Explorer initialization freeze
-
-	Made to fulfill Moon's Dex prophecy.
+	
+	dex mangostard😂😂.
 ]]
 -- This prevents "attempt to index nil with 'Syntax'" errors during initialization
 if not Settings then
