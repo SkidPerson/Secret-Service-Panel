@@ -15477,16 +15477,32 @@ local function main()
 		local otherPlayerButtons = {} -- guarda os btns dos outros jogadores
 		local localExpanded = false   -- estado do accordion
 
-		-- Ícones no mesmo estilo do Explorer do Dex (seta fechada/aberta)
-		-- Usamos os mesmos glyphs/fonte que o Explorer usa para abrir/fechar instances
-		local ICON_CLOSED = "rbxasset://textures/DeveloperFramework/icon_arrow_right.png"
-		local ICON_OPEN   = "rbxasset://textures/DeveloperFramework/icon_arrow_down.png"
+		-- Mesmo spritesheet de ícones que o Explorer do Dex usa (Main.MiscIcons)
+		-- Grid: imagem 256x256, células de 16x16 -> 16 colunas por linha
+		local ICON_MAP_ID = "rbxassetid://6511490623"
+		local ICON_CELL    = 16
+		local ICON_MAP_NUM_X = 256 / ICON_CELL -- 16 colunas
+		local ICON_INDEX = {
+			Expand_Over   = 24,
+			Expand        = 25,
+			Collapse_Over = 26,
+			Collapse      = 27,
+		}
 
-		-- Cria um botão de jogador no estilo do LMG2L
-		-- isLocal = true  => mostra o ícone de seta (expansível, é o jogador local)
-		-- isLocal = false => outros jogadores (ocultos até expandir, sem ícone próprio)
+		-- Aplica no ImageButton/ImageLabel o recorte certo do spritesheet pra exibir o ícone "key"
+		local function exibirIcone(obj, key)
+			local index = ICON_INDEX[key]
+			if not index then return end
+			obj.Image = ICON_MAP_ID
+			obj.ImageRectSize = Vector2.new(ICON_CELL, ICON_CELL)
+			obj.ImageRectOffset = Vector2.new(ICON_CELL * (index % ICON_MAP_NUM_X), ICON_CELL * math.floor(index / ICON_MAP_NUM_X))
+		end
+
+		-- Cria um botão de jogador no estilo do Explorer (Indent.Expand + Indent.Icon + EntryName separados)
+		-- isLocal = true  => mostra a seta de expandir/colapsar (é o jogador local)
+		-- isLocal = false => outros jogadores (ficam escondidos do GUI até expandir, sem seta própria)
 		local function criarBotaoJogador(nome, isLocal, yPos)
-			-- Botão principal (container clicável)
+			-- Botão principal (container clicável, equivalente ao "Indent" do Explorer)
 			local btn = Instance.new("TextButton", scrollFrame)
 			btn.Name = "PlayerItem_" .. nome
 			btn.BorderSizePixel = 0
@@ -15499,24 +15515,23 @@ local function main()
 			-- Outros jogadores começam ocultos (escondidos do GUI até expandir o accordion)
 			btn.Visible = isLocal
 
-			-- Ícone de seta (igual ao usado pelo Explorer para expandir/colapsar instances)
-			-- Só o jogador local tem esse ícone, já que só ele expande/colapsa a lista
-			local icon
+			-- Seta de expandir/colapsar (igual ao Indent.Expand do Explorer)
+			-- Só o jogador local tem essa seta, já que só ele expande/colapsa a lista
+			local expandIcon
 			if isLocal then
-				icon = Instance.new("ImageButton", btn)
-				icon.Name = "Icon"
-				icon.BorderSizePixel = 0
-				icon.BackgroundTransparency = 1
-				icon.Image = ICON_CLOSED
-				icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-				icon.Size = UDim2.new(0, 16, 0, 16)
-				icon.Position = UDim2.new(0, 0, 0, 0)
-				icon.AutoButtonColor = false
+				expandIcon = Instance.new("ImageButton", btn)
+				expandIcon.Name = "Expand"
+				expandIcon.BorderSizePixel = 0
+				expandIcon.BackgroundTransparency = 1
+				expandIcon.Size = UDim2.new(0, 16, 0, 16)
+				expandIcon.Position = UDim2.new(0, 0, 0, 0)
+				expandIcon.AutoButtonColor = false
+				exibirIcone(expandIcon, "Expand")
 			end
 
-			-- Label com o nome do jogador
+			-- Label com o nome do jogador (elemento próprio, separado do ícone)
 			local label = Instance.new("TextLabel", btn)
-			label.Name = "NameLabel"
+			label.Name = "EntryName"
 			label.BorderSizePixel = 0
 			label.BackgroundTransparency = 1
 			label.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -15527,33 +15542,42 @@ local function main()
 			label.TextXAlignment = Enum.TextXAlignment.Left
 			label.TextSize = 9
 
-			-- Clique: seleção azul + toggle accordion no jogador local
-			local function onClicked()
-				-- Desselecionar anterior
+			-- Clique no botão/label: só seleciona (visual azul), não expande nada
+			local function selecionar()
 				if selectedButton and selectedButton ~= btn then
 					selectedButton.BackgroundTransparency = 1
 					selectedButton.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
 				end
 
-				-- Selecionar este
 				selectedButton = btn
 				btn.BackgroundTransparency = 0
 				btn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+			end
 
-				-- Toggle accordion: mostra/oculta outros jogadores
-				if isLocal then
-					localExpanded = not localExpanded
-					icon.Image = localExpanded and ICON_OPEN or ICON_CLOSED
-					for _, otherBtn in pairs(otherPlayerButtons) do
-						otherBtn.Visible = localExpanded
-					end
+			-- Clique na seta: alterna o accordion (mostra/oculta os outros jogadores)
+			local function alternarExpand()
+				selecionar()
+
+				localExpanded = not localExpanded
+				exibirIcone(expandIcon, localExpanded and "Collapse" or "Expand")
+				for _, otherBtn in pairs(otherPlayerButtons) do
+					otherBtn.Visible = localExpanded
 				end
 			end
 
-			btn.MouseButton1Click:Connect(onClicked)
-			if icon then
-				icon.MouseButton1Click:Connect(onClicked)
+			-- Hover na seta: troca pro ícone "_Over", igual ao Explorer
+			if isLocal then
+				expandIcon.MouseEnter:Connect(function()
+					exibirIcone(expandIcon, localExpanded and "Collapse_Over" or "Expand_Over")
+				end)
+				expandIcon.MouseLeave:Connect(function()
+					exibirIcone(expandIcon, localExpanded and "Collapse" or "Expand")
+				end)
+				expandIcon.MouseButton1Click:Connect(alternarExpand)
 			end
+
+			-- Clique no nome/label: apenas seleciona, sem expandir (ícone e nome são independentes)
+			btn.MouseButton1Click:Connect(selecionar)
 
 			return btn
 		end
@@ -15570,7 +15594,7 @@ local function main()
 
 			local yPos = 2 -- pequena margem no topo
 
-			-- 1) Jogador local (com ícone expansível)
+			-- 1) Jogador local (com seta expansível)
 			criarBotaoJogador(localPlayerName, true, yPos)
 			yPos = yPos + 18
 
